@@ -1,0 +1,51 @@
+{
+  "geode": "4.3.1",
+  "gd": {
+    "win": "2.2074"
+  },
+  "tags": ["offline", "utility", "enhancement"],
+  "resources": {
+    "sprites": ["resources/screenshotButton.png"]
+  },
+  "links": {
+    "community": "https://discord.gg/VTKFNMcAvZ",
+    "source": "https://github.com/Leon-baton/Auto-Screenshot"
+  },
+  "id": "leon.auto-screenshot",
+  "name": "Auto Screenshot",
+  "early-load": true,
+  "version": "v1.0.2",
+  "developer": "Leon-baton",
+  "description": "Screenshot after level complete or new best",
+  "settings": {
+    "Screenshot on new best (Default)": {
+      "type": "bool",
+      "default": false,
+      "description": "Whether to take a screenshot of new best"
+    },
+    "Screenshot on complete (Default)": {
+      "type": "bool",
+      "default": false,
+      "description": "Whether to take a screenshot of level complete"
+    },
+    "Screenshot after N percent (Default)": {
+      "type": "int",
+      "default": 50,
+      "description": "After what percentage will be the default screenshot"
+    },
+    "Delay": {
+      "type": "float",
+      "default": 1,
+      "description": "Delay after new best or level completing",
+      "control": {
+        "arrows": true,
+        "arrow-step": 0.1,
+        "big-arrows": false,
+        "big-arrow-step": 0.5,
+        "slider": true,
+        "slider-step": 0.1,
+        "input": true
+      }
+    }
+  }
+}
