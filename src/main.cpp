@@ -455,7 +455,7 @@ class $modify(PauseLayer)
         PauseLayer::customSetup();
 
         auto sprite = CCSprite::create("screenshotButton.png"_spr);
-        sprite->setScale(0.12f);
+        sprite->setScale(0.24f);
 
         auto btn = CCMenuItemSpriteExtra::create(sprite, this, menu_selector(ConfigLayer::openMenu));
         auto menu = this->getChildByID("right-button-menu");
