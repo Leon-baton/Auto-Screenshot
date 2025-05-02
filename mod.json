@@ -14,7 +14,7 @@
   "id": "leon.auto-screenshot",
   "name": "Auto Screenshot",
   "early-load": true,
-  "version": "v1.0.2",
+  "version": "v1.0.3",
   "developer": "Leon-baton",
   "description": "Screenshot after level complete or new best",
   "settings": {
