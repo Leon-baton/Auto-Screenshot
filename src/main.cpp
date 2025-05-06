@@ -2,10 +2,9 @@
 #include <fstream>
 #include <cstring>
 #include <vector>
-#include <chrono>
 #include <thread>
-#include <windows.h>
-#include <WinUser.h>
+#include <ctime>
+#include <cocos2d.h>
 #include <Geode/Geode.hpp>
 #include <Geode/modify/PlayLayer.hpp>
 #include <Geode/modify/PlayerObject.hpp>
@@ -16,8 +15,19 @@
 #include <Geode/binding/CCMenuItemToggler.hpp>
 #include <Geode/ui/GeodeUI.hpp>
 #include <Geode/binding/GJGameLevel.hpp>
-#include <cocos2d.h>
 #include <Geode/ui/TextInput.hpp>
+
+#ifdef GEODE_IS_WINDOWS
+#include <windows.h>
+#include <WinUser.h>
+#endif
+
+#ifdef GEODE_IS_ANDROID
+#include <jni.h>
+#include <android/log.h>
+#include <Geode/ui/Notification.hpp>
+#include <Geode/platform/android.hpp>
+#endif
 
 using namespace geode::prelude;
 
@@ -51,7 +61,6 @@ struct AutoScreenshotLevel
 
 AutoScreenshotLevel currentlyLoadedLevel;
 std::vector<AutoScreenshotLevel> loadedAutoScreenshotLevels;
-std::vector<uint32_t> screenshotKeybind = {VK_F12};
 
 std::string getSettingsPath()
 {
@@ -134,11 +143,13 @@ void loadFile()
 
     log::info("Successfully loaded settings for {} levels", loadedAutoScreenshotLevels.size());
 }
+
+#ifdef GEODE_IS_WINDOWS
+std::vector<uint32_t> screenshotKeybind = {VK_F12};
 void sendKeyEvent(uint32_t key, int state)
 {
     INPUT inputs[1] = {};
     inputs[0].type = INPUT_KEYBOARD;
-
     if (key == 163 || key == 165)
     {
         inputs[0].ki.dwFlags = state | KEYEVENTF_EXTENDEDKEY;
@@ -147,12 +158,10 @@ void sendKeyEvent(uint32_t key, int state)
     {
         inputs[0].ki.dwFlags = state;
     }
-
     inputs[0].ki.wScan = 0;
     inputs[0].ki.wVk = key;
     SendInput(1, inputs, sizeof(INPUT));
 }
-
 void takeScreenshot()
 {
     for (auto key : screenshotKeybind)
@@ -163,8 +172,69 @@ void takeScreenshot()
     {
         sendKeyEvent(key, 2);
     }
-    log::info("Screenshot triggered successfully");
+    log::info("Windows screenshot triggered");
 }
+
+#elif defined(GEODE_IS_ANDROID)
+void takeScreenshot()
+{
+    auto director = cocos2d::CCDirector::sharedDirector();
+    CCScene *scene = director->getRunningScene();
+
+    std::string modDir = Mod::get()->getSaveDir();
+
+    std::time_t now = std::time(nullptr);
+    std::tm *tm = std::localtime(&now);
+    char filename[128];
+    std::strftime(filename, sizeof(filename), "screenshot_%Y-%m-%d_%H-%M-%S.png", tm);
+
+    auto renderTexture = cocos2d::CCRenderTexture::create(scene->getContentSize().width, scene->getContentSize().height);
+
+    if (!renderTexture)
+    {
+        auto notification = geode::Notification::create(
+            "Failed to create render texture",
+            geode::NotificationIcon::Error,
+            geode::NOTIFICATION_DEFAULT_TIME);
+        notification->show();
+        return;
+    }
+
+    renderTexture->begin();
+    director->getRunningScene()->visit();
+    renderTexture->end();
+
+    std::string savePath = fmt::format("{}/{}", modDir, filename);
+
+    auto image = renderTexture->newCCImage();
+    bool isSaved = false;
+
+    if (image)
+    {
+        isSaved = image->saveToFile(savePath.c_str());
+        image->release();
+    }
+
+    if (isSaved)
+    {
+        auto notification = geode::Notification::create(
+            fmt::format("Screenshot was saved to mod folder", savePath),
+            geode::NotificationIcon::Success,
+            geode::NOTIFICATION_DEFAULT_TIME);
+        notification->show();
+        log::info("Screenshot saved to: {}", savePath);
+    }
+    else
+    {
+        auto notification = geode::Notification::create(
+            "Failed to save screenshot file",
+            geode::NotificationIcon::Error,
+            geode::NOTIFICATION_DEFAULT_TIME);
+        notification->show();
+        log::error("Failed to save screenshot to: {}", savePath);
+    }
+}
+#endif
 
 void saveLevel(AutoScreenshotLevel lvl)
 {
@@ -350,7 +420,12 @@ class ConfigLayer : public geode::Popup<std::string const &>
 protected:
     bool setup(std::string const &value) override
     {
+
+#ifdef GEODE_IS_ANDROID
+        this->setTouchEnabled(true);
+#elif defined(GEODE_IS_WINDOWS)
         this->setKeyboardEnabled(true);
+#endif
         currentlyInMenu = true;
         auto winSize = cocos2d::CCDirector::sharedDirector()->getWinSize();
         const float offsetX = 50;
@@ -443,8 +518,11 @@ public:
 
     void openMenu(CCObject *)
     {
-        auto layer = create();
-        layer->show();
+        auto layer = ConfigLayer::create();
+        if (layer)
+        {
+            layer->show();
+        }
     }
 };
 
@@ -459,6 +537,13 @@ class $modify(PauseLayer)
 
         auto btn = CCMenuItemSpriteExtra::create(sprite, this, menu_selector(ConfigLayer::openMenu));
         auto menu = this->getChildByID("right-button-menu");
+
+        if (!menu)
+        {
+            log::error("right-button-menu not found, please install node-ids mod");
+            return;
+        }
+
         menu->addChild(btn, 100);
         menu->updateLayout();
     }
